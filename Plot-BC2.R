@@ -176,7 +176,7 @@ par3d(userMatrix = rotate3d(U, theta, 0,0,1))
 title = paste("NST-R", group)
 bgplot3d({
   plot.new()
-  #title(main = title, line = titleLine, cex.main=2)
+  title(main = title, line = titleLine, cex.main=2)
 })
 
 # Add the central axis with their labels

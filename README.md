@@ -81,6 +81,8 @@ Note that some black dots can be "in the middle of nowhere". These are solutions
 the first phase of the heuristic (random draws of combinations of lambdas) and that don't 
 correspond to "valid" solutions.
 
+![Example plot](SamplePlot.png)
+
 ## Other R scripts
 The  main R scripts are those that are cited before (BruteFore.R, Heuristic.R, HeuristicVsBruteForec.R 
 and the three Plot-BCX.R scripts).
