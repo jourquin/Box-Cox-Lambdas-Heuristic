@@ -23,7 +23,7 @@ matrices and the networks come from the [ETISPlus](https://cordis.europa.eu/proj
 FP7 European research project. The input data for the logit models (cost, transit time and trip
 length for all the origin-destination pairs and group of commodities) were computed using the
 [Nodus](http://nodus.uclouvain.be) freight transportation network model. The data is stored in 
-the "europeL2-Input.Rda" file, which includes a single R dataframe called "inputData".
+the "europeL2-Input.Rda" file, which includes a single R dataframe named "inputData".
 
 A complete discussion on how to implement a weighted conditional multinomial logit model
 on aggregated data using the same dataset as the one included in this project can be found in
@@ -64,7 +64,7 @@ The "HeuristicVsBruteForce.R" script compares the results of the heuristic to th
 identified by the brute force approach. A complete discussion about this can be found in the
 "validation" section of "Heuristic.pdf". This script also stores the solutions tested by the heuristic
 in the "europeL2-01-HeuristicX.Rda" files, which contain a single dataframe named "heuristicPath".
-This output can be used to identify the "path" used by the heuristic towards a solution.  
+This output can be used to plot the "path" used by the heuristic towards a solution.  
 
 ## Plots
 The "Plot-BC1.R", "Plot-BC2.R" and "Plot-BC3.R" propose interactive plots that illustrate the 
@@ -74,7 +74,7 @@ commodities to plot. One can also plot the unconstrained max Log-Likelighood if 
 represented by a red dot if it is different from the best "valid" solution (green dot). 
 
 Finally, one can also plot the solutions tested by the heuristic during its path towards a solution. 
-These solutions are represented by black dots and the final solution est represented by a blue dot if it is
+These solutions are represented by black dots and the final solution is represented by a blue dot if it is
 different from the "exact" best solution identified by the brute force approach (green dot).
 
 Note that some black dots can be "in the middle of nowhere". These are solutions tested during
@@ -86,17 +86,38 @@ This is an example plot (bivariate case, NST-R 5):
 ![Example plot](SamplePlot.png)
 
 ## Other R scripts
-The  main R scripts are those that are cited before (BruteFore.R, Heuristic.R, HeuristicVsBruteForec.R 
+The  main R scripts are those that are cited before (BruteForce.R, Heuristic.R, HeuristicVsBruteForce.R 
 and the three Plot-BCX.R scripts).
 
 Some pieces of R code are common to several scripts. They are "sourced" from within the main
 scripts:
 - \_BoxCoxLogitSolver : prepares the data for a weighted conditional multinomial logit and
-solves it using the "mnlogit" R package. Returns the solved model.
-- \_utils.R : several convenience functions (testing signs of the estimators, retrieving their 
+solves it using the [mnlogit](https://cran.r-project.org/package=mnlogit) R package. It
+returns the solved model.
+- \_Utils.R : several convenience functions: testing signs of the estimators, retrieving their 
 significance level, draw random combinations of lambda's...
 - \_PlotSettings.R : contains group specific settings used to "optimize" the visual perspectives
 of the plots. Used to make the comparison of the plots easier.
+
+## Hash table
+The heuristic stores the already solved logit models in a hash table, which key is based
+on the lambda's used for their Box-Cox transform. Therefore, the script uses the
+[ht](https://github.com/nfultz/ht) package, a minimal implementation of a hash table using 
+the [digest](https://cran.r-project.org/package=digest) package. As ht is not available on CRAN, 
+a compiled version is provided with this project (ht_1.0.tgz). The package will be automatically 
+installed when the script is run. Note that the [digest](https://cran.r-project.org/package=digest)
+package must be installed from CRAN.
+
+This particular implementation of an hash table for R is interesting if one needs to store
+arbitrarily complex objects (a combination of lambda's in this case) as keys in a hash.
+
+## Needed R packages
+The following R packages (available on CRAN) are needed to run the scripts: 
+[car](https://cran.r-project.org/package=car),
+[digest](https://cran.r-project.org/package=digest),
+[mlogit](https://cran.r-project.org/package=mlogit), 
+[mnlogit](https://cran.r-project.org/package=mnlogit), 
+[rgl](https://cran.r-project.org/package=rgl).
 
 
 
