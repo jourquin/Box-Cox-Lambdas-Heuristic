@@ -191,7 +191,9 @@ rgl::mtext3d(text = l3, edge = "z", pos = 0.5, col = labelCol, at = 1.1, cex = 1
 
 # Print LL's of exact and heuristic solutions
 cat(paste("Exact max LL = ", constrainedMaxLL, "\n"))
-cat(paste("Heur. max LL = ", bestLL, "\n"))
+if (plotPathToSolution) {
+  cat(paste("Heur. max LL = ", bestLL, "\n"))
+}
 
 # Save the plot to a PNG file if wanted
 # rgl.snapshot(filename = "plot2.png")
