@@ -119,9 +119,6 @@ The following R packages (available on CRAN) are needed to run the scripts:
 [mnlogit](https://cran.r-project.org/package=mnlogit), 
 [rgl](https://cran.r-project.org/package=rgl).
 
-> **_NOTE:_**  'mlogit' version >= 1.1 seems to break the code. I'll have
-a closer look to the problem. In the meantime, please  use version 1.0-3, 
-which tarball is provided in this repository. 
 
 
 

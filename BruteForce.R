@@ -143,7 +143,7 @@ bfSolutions <- data.frame()
 groups <- as.numeric(levels(as.factor(inputData$grp)))
 
 # Force a subset of groups
-#groups <- c(4,5)
+#groups <- c(4)
 
 # Use parallel computing in mnLogit
 nbCores <- parallel:::detectCores()
@@ -159,6 +159,7 @@ for (i in 1:length(groups)) {
 
   # Solve for each (combination of) lambda(s)
   n <- nrow(solutionsForGroup)
+  
   for (r in 1:n) {
     # Get lambda combination for this row
     cat(paste("Solving logit for group", group, "and lambda(s) "))
@@ -175,7 +176,7 @@ for (i in 1:length(groups)) {
       {
         # Solve logit
         model <- solveBoxCoxLogit(inputDataForGroup, lambdas, nbCores)
-
+        
         # Retrieve and store results
         solutionsForGroup[r, "group"] <- group
 
