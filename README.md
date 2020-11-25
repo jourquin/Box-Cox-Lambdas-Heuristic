@@ -104,7 +104,7 @@ The heuristic stores the already solved logit models in a hash table, which key 
 on the lambda's used for their Box-Cox transform. Therefore, the script uses the
 [ht](https://github.com/nfultz/ht) package, a minimal implementation of a hash table using 
 the [digest](https://cran.r-project.org/package=digest) package. As ht is not available on CRAN, 
-a compiled version is provided with this project (ht_1.0.tgz). The package will be automatically 
+a source version is provided with this project (ht_1.0.tar.gz). The package will be automatically 
 installed when the script is run. Note that the [digest](https://cran.r-project.org/package=digest)
 package must be installed from CRAN.
 
