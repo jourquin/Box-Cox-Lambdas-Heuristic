@@ -77,9 +77,9 @@ if (suppressWarnings(!require(ht))) {
   }
   this.dir <- dirname(parent.frame(2)$ofile)
   setwd(this.dir)
-  install.packages("./ht_1.0.tgz",
+  install.packages("./ht_1.0.tar.gz",
     repos = NULL,
-    type = "binary",
+    type = "source",
     quiet = TRUE
   )
 }
