@@ -127,18 +127,21 @@ solveBoxCoxLogit <- function(x, lambdas, nbCores = 1) {
     wideData <- rbind(wideData, wd)
   }
   
+  
   # Transform into "long" format data (see mlogit documentation)
   n <- as.integer(3 * nbLambdas + 1)
+  varColmuns = c(2:n)
   longData <-
     mlogit.data(wideData,
                 choice = "mode",
                 shape = "wide",
-                varying = 2:4
-    ) # First column is "mode", variables are in columns 2 to 4.
+                varying = varColmuns
+    ) # First column is "mode", variables are in columns 2 to n.
   
   # mlogit version 1.1 returns a dfidx object, but mnlogit only accepts data frames for now
   # Be sure to have a dataframe
-  longData = as.data.frame(longData)
+  #longData <- as.data.frame(longData)
+  longData$alt <- as.character(longData$alt)
   
   # Solve the model, using the mnlogit package, faster (parallelized) that mlogit
   model <- mnlogit(
@@ -149,6 +152,6 @@ solveBoxCoxLogit <- function(x, lambdas, nbCores = 1) {
     na.rm = FALSE,
     ncores = nbCores
   )
-  
+
   return(model)
 }

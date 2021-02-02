@@ -25,17 +25,39 @@ library(car)
 # Clear memory if wanted
 rm(list = ls(all.names = TRUE))
 
+# Change working directory to the location of this script
+this.dir <- dirname(parent.frame(2)$ofile)
+setwd(this.dir)
+
 # Group of commodities to plot
-group <- 7
+group <- 9
+
+
+# Minimum signif. level for the estimators: " " = -1, ." = 0, "*" = 1, "**" = 2, "***" = 3
+minSignifLevel <- 1
+
+# If TRUE, the signif. level of the intercepts is also tested
+withSignificantIntercepts <- FALSE
 
 # Plot unconstrained max LL (red dot)
 plotUnconstrainedMax <- TRUE
 
+# Limit to 0.5 step. If TRUE, plotPathToSolution must be set to FALSE
+limitGranularity <- TRUE
+
 # Plot all the solutions tested by the heuristic. The best one will be in blue if different from the exact bes solution
-plotPathToSolution <- TRUE
+# If set to TRUE, limitGranularity must be FALSE
+plotPathToSolution <- FALSE
 
 # input dataset
 modelName <- "europeL2-01"
+
+# Can be adjusted to improve output (depends on previous settings)
+sphereSize <- 2
+zoomLevel <- 0.12
+theta <- 0
+emphaseLevel <- 1
+
 
 ######################################################################
 # Nothing should be changed beyond this line                     #####
@@ -45,36 +67,52 @@ modelName <- "europeL2-01"
 windowSize <- 800
 titleLine <- -50
 
+# import some convenience functions
+source("_Utils.R")
+
 # Number of variables in the utility function of the logit model
 nbVariables <- 3
 
 # Get the data for the current group from the brute force results
-this.dir <- dirname(parent.frame(2)$ofile)
-setwd(this.dir)
 bfSolutions <- NULL
 load(paste(modelName, "-BruteForce3.Rda", sep = ""))
+
+if (limitGranularity) {
+  # Limit to 0.5 granularity
+  bfSolutions$l.c <- abs(bfSolutions$lambda.cost) *2
+  bfSolutions$l.d <- abs(bfSolutions$lambda.duration) *2
+  bfSolutions$l.l <- abs(bfSolutions$lambda.length) *2
+  bfSolutions <- bfSolutions[bfSolutions$l.c%%1 == 0 & bfSolutions$l.d%%1 == 0 & bfSolutions$l.l%%1 == 0, ]
+  bfSolutions$l.c <- NULL
+  bfSolutions$l.d <- NULL
+  bfSolutions$l.l <- NULL
+}
+
 data <- bfSolutions[bfSolutions$group == group, ]
 
-# Specific settings (radius, zoom and emphase levels for each group)
-source("_PlotSettings.R")
+# Mark the solutions to retain
+data <- markValidSolutions(data, nbVariables, minSigLevel, withSignificantIntercepts)
+
+# Mark constrained max
+data$best[data$LL == max(data$LL[data$keep])] <- TRUE
 
 unconstrainedMaxLL <- max(data$LL, na.rm = TRUE)
 
 # Get all the valid solutions, with or without the best unconstrained one
 if (plotUnconstrainedMax) {
   # Keep valid LL's and the max LL without constraints
-  LambdaCost <- data$lambda.cost[data$error == "" | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
-  LambdaDuration <- data$lambda.duration[data$error == "" | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
-  LambdaLength <- data$lambda.length[data$error == "" | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
-  LogLik <- data$LL[data$error == "" | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
-  best <- data$best[data$error == "" | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
+  LambdaCost <- data$lambda.cost[data$keep | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
+  LambdaDuration <- data$lambda.duration[data$keep | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
+  LambdaLength <- data$lambda.length[data$keep | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
+  LogLik <- data$LL[data$keep | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
+  best <- data$best[data$keep | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
 } else {
   # Keep valid LL's
-  LambdaCost <- data$lambda.cost[data$error == ""]
-  LambdaDuration <- data$lambda.duration[data$error == ""]
-  LambdaLength <- data$lambda.length[data$error == ""]
-  LogLik <- data$LL[data$error == ""]
-  best <- data$best[data$error == ""]
+  LambdaCost <- data$lambda.cost[data$keep]
+  LambdaDuration <- data$lambda.duration[data$keep]
+  LambdaLength <- data$lambda.length[data$keep]
+  LogLik <- data$LL[data$keep]
+  best <- data$best[data$keep]
 }
 
 # Default color and size of the dots
@@ -99,7 +137,6 @@ colors <- c(colors, "white")
 constrainedMaxIdx <- which(best == TRUE)
 constrainedMaxLL <- LogLik[constrainedMaxIdx]
 
-
 # Identify path to best LL if wanted
 if (plotPathToSolution) {
   # Load the solutions tested by the heuristic for the group
@@ -115,7 +152,7 @@ if (plotPathToSolution) {
   best2 <- solutions$best
   bestLL <- LogLik2[which(best2 == TRUE)]
   bestLLIdx <- which(LogLik == bestLL)
-
+  
   # Mark all the tested solutions
   for (i in 1:length(LogLik2)) {
     idx <- which(LogLik == LogLik2[i])
@@ -135,7 +172,7 @@ if (plotPathToSolution) {
   # Recomput sizes of nodes
   LogLik[is.na(LogLik)] <- min(LogLik, na.rm = TRUE)
   sizes <- (LogLik - min(LogLik, na.rm = TRUE)) / min(LogLik, na.rm = TRUE)
-
+  
   # Identify solution of heuristic
   colors[bestLLIdx] <- "blue"
   if (!emphased[bestLLIdx]) {
@@ -159,7 +196,6 @@ colors[constrainedMaxIdx] <- "green"
 if (!emphased[constrainedMaxIdx]) {
   sizes[constrainedMaxIdx] <- emphaseLevel * sizes[constrainedMaxIdx]
 }
-
 
 # Display
 open3d()

@@ -28,14 +28,11 @@ rm(list = ls(all.names = TRUE))
 modelName <- "europeL2"
 
 # Number of variables that will be Box-Cox transformed
-nbVariables <- 1
+nbVariables <- 2
 
 # Range and step size (granularity) for the Box-Cox lambda values to test
 range <- 2.0
 granularity <- 0.1
-
-# Min significant level to accept for all the estimators (valid solutions)
-sigLevel <- 3
 
 ######################################################################
 #                      Main entry point                          #####
@@ -54,10 +51,11 @@ source("_Utils.R")
 # Change the output width
 options(width = 200)
 
-# Create a dataframe that will contain the solutions for all the possible (combinations of) lambdas.
+# Create a dataframe that will contain the solutions for all the possible (combinations of) lambdas
+# and a given group.
 # The table contains a row for each lambda's combination. Each row contains the characteristics of
 # a solution (LL, values of the estimated parameters and their signif. level)
-createSolutionsTable <- function(nbVariables, range, granularity) {
+createSolutionsTable <- function(group, nbVariables, range, granularity) {
 
   # Number of steps in the range of values to test
   nbSteps <- 1 + 2 * range / granularity # Number of steps in the range of values to test
@@ -128,6 +126,9 @@ createSolutionsTable <- function(nbVariables, range, granularity) {
   names(solutionsTable)[1] <- "group"
   names(solutionsTable)[2] <- "best"
 
+  # Set the group of commodities that must be solved
+  solutionsTable$group <- group
+  
   return(solutionsTable)
 }
 
@@ -143,7 +144,7 @@ bfSolutions <- data.frame()
 groups <- as.numeric(levels(as.factor(inputData$grp)))
 
 # Force a subset of groups
-#groups <- c(4)
+#groups <- c(0)
 
 # Use parallel computing in mnLogit
 nbCores <- parallel:::detectCores()
@@ -155,8 +156,8 @@ for (i in 1:length(groups)) {
   inputDataForGroup <- inputData[inputData$grp == group, ]
 
   # Dataframe that will contain all the computed models  for this group
-  solutionsForGroup <- createSolutionsTable(nbVariables, range, granularity)
-
+  solutionsForGroup <- createSolutionsTable(group, nbVariables, range, granularity)
+  
   # Solve for each (combination of) lambda(s)
   n <- nrow(solutionsForGroup)
   
@@ -178,8 +179,6 @@ for (i in 1:length(groups)) {
         model <- solveBoxCoxLogit(inputDataForGroup, lambdas, nbCores)
         
         # Retrieve and store results
-        solutionsForGroup[r, "group"] <- group
-
         solutionsForGroup[r, "LL"] <- model$logLik
 
         s <- "(Intercept):2"
@@ -205,11 +204,7 @@ for (i in 1:length(groups)) {
 
         # Is this a valid solution ?
         if (allSignsAreExpected(model)) {
-          if (allCoefsAreSignificant(model, nbStars = sigLevel)) {
-            error <- ""
-          } else {
-            error <- "Low signif."
-          }
+          error <- ""
         } else {
           error <- "Wrong Sign(s)"
         }
@@ -222,15 +217,15 @@ for (i in 1:length(groups)) {
       solutionsForGroup[r, "error"] <- "Singularity"
     }
   }
-
+  
   # Identify best valid solution
   tmp <- subset(solutionsForGroup, error == "")
   bestLL <- max(tmp$LL)
   solutionsForGroup[which(solutionsForGroup$LL == bestLL), "best"] <- TRUE
-
+  
   # Merge with solutions for other groups
   bfSolutions <- rbind(bfSolutions, solutionsForGroup)
-
+  
   # Next group
   cat("\n")
 }
@@ -239,8 +234,11 @@ for (i in 1:length(groups)) {
 bestSolutions <- bfSolutions[bfSolutions$best == TRUE, ]
 bestSolutions$best <- NULL
 bestSolutions$error <- NULL
-cat("Best solutions:\n")
+cat("Best solutions (correct signs but regardless of signif. levels of estimators):\n")
 print(bestSolutions, row.names = FALSE)
+
+# Remove the "best" column before saving
+bfSolutions$best <- NULL
 
 # Save all the results (further used for plotting and comparison with heuristic solutions)
 z <- paste("0", 10 * granularity, sep = "")

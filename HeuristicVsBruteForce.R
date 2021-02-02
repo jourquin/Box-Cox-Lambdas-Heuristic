@@ -15,8 +15,19 @@
 # Clear memory if wanted
 rm(list = ls(all.names = TRUE))
 
+# Set working dir to location of this script
+this.dir <- dirname(parent.frame(2)$ofile)
+setwd(this.dir)
+options(width = 250)
+
 # Number of explanatory variables (1, 2 or 3)
 nbVariables <- 2
+
+# Minimum signif. level for the estimators: " " = 1, ." = 0, "*" = 1, "**" = 2, "***" = 3
+minSignifLevel <- 1
+
+# If TRUE, the signif. level of the intercepts is also tested
+withSignificantIntercepts <- FALSE
 
 # Successive steps to use to reach the final granularity
 steps <- c(0.4, 0.2, 0.1)
@@ -25,11 +36,11 @@ steps <- c(0.4, 0.2, 0.1)
 nbRandomCombinations <- c(1, 5, 15)
 
 # Number of heuristic repetitions for one group (shotgun hill climbing)
-nbShotguns <- 1
+nbShotguns <- c(1, 5, 10)
 
 # A random seed can be set here (for replicability). If seed = -1, no seed is set
-#seed = -1
-seed <- 2020
+seed = -1
+#seed <- 2020
 
 # Maximum number of Logit computations before stop if no convergence to a solution
 maxLogitComputations <- 500 * nbShotguns
@@ -54,9 +65,9 @@ if (suppressWarnings(!require(ht))) {
   }
   this.dir <- dirname(parent.frame(2)$ofile)
   setwd(this.dir)
-  install.packages("./ht_1.0.tgz",
+  install.packages("./ht_1.0.tar.gz",
     repos = NULL,
-    type = "binary",
+    type = "source",
     quiet = TRUE
   )
 }
@@ -178,11 +189,6 @@ exploreAround <- function(solution, stepSize, dimLevel = 1) {
 # MAIN ENTRY
 #########################################################################################
 
-# Set working dir to location of this script
-this.dir <- dirname(parent.frame(2)$ofile)
-setwd(this.dir)
-options(width = 250)
-
 # Load brute force results (bfSolutions)
 load(paste(modelName, "-BruteForce", nbVariables, ".Rda", sep = ""))
 
@@ -195,13 +201,16 @@ range <- max(bfSolutions$lambda.cost)
 # Number of steps in the range of values to test
 nbSteps <- 1 + 2 * range / granularity # Number of steps in the range of values to test
 
+# Mark the solutions to retain
+bfSolutions <- markValidSolutions(bfSolutions, nbVariables, minSigLevel, withSignificantIntercepts)
+
 # Force a subset of groups
 #groups <- c(4)
 
 # Initialize a dataframe that will contain the results (exact vs heuristic)
-n <- nbVariables * 2 + 10
+n <- nbVariables * 2 + 8
 output <- data.frame(matrix(ncol = n, nrow = length(groups)))
-s <- c("group", "LL.exact", "LL.heur", "nb.exact", "nb.heur", "nb.checks", "nb.solutions", "rank", "max.diff.LL", "diff.LL")
+s <- c("group", "LL.exact", "LL.heur", "nb.exact", "nb.heur", "nb.checks", "rank", "diff.LL")
 for (k in 1:nbVariables) {
   if (k == 1) s <- append(s, "lambda.cost.exact")
   if (k == 2) s <- append(s, "lambda.duration.exact")
@@ -242,7 +251,7 @@ for (g in 1:length(groups)) {
   bestSolution <- NULL
   solutionsToExplore <- list()
 
-  for (shotgun in 1:nbShotguns) {
+  for (shotgun in 1:nbShotguns[nbVariables]) {
     ###################################################################################
     # 1. Randomly choose a series of lambdas and keep the one that gives the highest LL
     ###################################################################################
@@ -306,12 +315,9 @@ for (g in 1:length(groups)) {
     }
   }
 
-  # Mark solution found by the heuristic
-  # lambdas <- getLambdas(bestSolution, nbVariables)
-  # solutionsForGroup[getIdx(lambdas), "best"] <- TRUE
 
   # Rank of the solution found by the heuristic
-  LLs <- sort(bfSolutionsForGroup$LL[bfSolutionsForGroup$error == ""], decreasing = TRUE)
+  LLs <- sort(bfSolutionsForGroup$LL[bfSolutionsForGroup$keep], decreasing = TRUE)
   for (j in 1:length(LLs)) {
     if (LLs[j] == bestSolution$LL) rank <- j
   }
@@ -321,28 +327,28 @@ for (g in 1:length(groups)) {
   diffLL <- round((LLs[1] - bestSolution$LL) / LLs[1], 2)
 
   # Target LL to reach
-  tmp <- bfSolutionsForGroup[bfSolutionsForGroup$error == "", ]
+  tmp <- bfSolutionsForGroup[bfSolutionsForGroup$keep, ]
   veryBestLL <- max(tmp$LL)
-
+  
   # Fill the row of the output dataframe corresponding to the current group
   output[g, "group"] <- group
   output[g, "nb.exact"] <- (1 + 2 * range / granularity)^nbVariables
   output[g, "nb.heur"] <- nbLogitComputations
   output[g, "nb.checks"] <- nbModelChecks
-  output[g, "nb.solutions"] <- length(LLs)
+  #output[g, "nb.solutions"] <- length(LLs)
   output[g, "rank"] <- rank
-  output[g, "max.diff.LL"] <- paste((maxDiffLL * 100), "%", sep = "")
+  #output[g, "max.diff.LL"] <- paste((maxDiffLL * 100), "%", sep = "")
   output[g, "diff.LL"] <- paste((diffLL * 100), "%", sep = "")
-
+  
   idx1 <- which(bfSolutionsForGroup$LL == veryBestLL)
   idx2 <- which(bfSolutionsForGroup$LL == bestSolution$LL)
-
+  
   output[g, "LL.exact"] <- bfSolutionsForGroup$LL[idx1]
   output[g, "LL.heur"] <- bfSolutionsForGroup$LL[idx2]
-
+  
   output[g, "lambda.cost.exact"] <- bfSolutionsForGroup$lambda.cost[idx1]
   output[g, "lambda.cost.heur"] <- bfSolutionsForGroup$lambda.cost[idx2]
-
+  
   if (nbVariables > 1) {
     output[g, "lambda.duration.exact"] <- bfSolutionsForGroup$lambda.duration[idx1]
     output[g, "lambda.duration.heur"] <- bfSolutionsForGroup$lambda.duration[idx2]
@@ -352,9 +358,9 @@ for (g in 1:length(groups)) {
     output[g, "lambda.length.exact"] <- bfSolutionsForGroup$lambda.length[idx1]
     output[g, "lambda.length.heur"] <- bfSolutionsForGroup$lambda.length[idx2]
   }
-
+  
   cat("\n")
-
+  
   # Save the solutions stored in the hash map in a dataframe and flag the best solution for this group
   l <- mget(ls(storedSolutions), storedSolutions)
   for (i in 1:length(l)) {
@@ -370,7 +376,6 @@ for (g in 1:length(groups)) {
       heuristicPath <- rbind(heuristicPath, solution)
     }
   }
-  
 }
 
 # Save the solutions computing by the heuristic (further used for plotting)

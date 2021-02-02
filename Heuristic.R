@@ -17,28 +17,37 @@
 # The script implementents a meta heuristic able to quicly identify good (combination of) lambda(s) to use for the Box-Cox
 # transforms in a given range and for a given step (granularity).
 #
-# Output: identifed lambda's, log-likelihood, values of the estimated parameters and their level of significance of the logit model.
+# Output: identifed lambda's, log-likelihood, values of the estwarningsimated parameters and their level of significance of the logit model.
 #
 
 # Clear memory if wanted
 rm(list = ls(all.names = TRUE))
 
+# Set working dir to location of this script
+this.dir <- dirname(parent.frame(2)$ofile)
+setwd(this.dir)
+options(width = 200)
+
 # Input data
-modelName <- "europeL2-input.Rda"
+modelName <- "europeL2-Input.Rda"
 
 # Group of commodities for which the logit must be estimated
-group <- 4
+group <- 0
 
 # Number of independant variables that must be Box-Cox transformed
 nbVariables <- 2
 
-# Number of random combinations to draw during the first step of the heuristic (for 1, 2 or 3 lambdas)
-# nbRandomCombinations <- 1
-nbRandomCombinations <- 5
-# nbRandomCombinations <- 15
+# Min significant level to accept for all the estimators (valid solutions)
+minSigLevel <- 1
 
-# Number of heuristic repetitions for one group (shotgun hill climbing)
-nbShotguns <- 1
+# If TRUE, the signif. level of the intercepts is also tested
+withSignificantIntercepts <- FALSE
+
+# Number of random combinations to draw during the first step of the heuristic (for 1, 2 or 3 lambdas)
+nbRandomCombinations <- c(1, 5, 15)
+
+# Number of heuristic repetitions for one group (shotgun hill climbing). Depends on nbVariables
+nbShotguns <- c(1, 5, 10)
 
 # Range to look in (from -range to +range)
 range <- 2
@@ -46,15 +55,12 @@ range <- 2
 # Step to use between -range and +range
 granularity <- 0.1
 
-# Min significant level to accept for all the estimators (valid solutions)
-sigLevel <- 3
-
 # Successive steps to use to reach the final granularity
 steps <- c(0.4, 0.2, 0.1)
 
 # A random seed can be set here (for replicability). If seed = -1, no seed is set
 seed <- -1
-# seed <- 2020
+#seed <- 2020
 
 # Maximum number of Logit computations before stop if no convergence to a solution
 maxLogitComputations <- 500 * nbShotguns
@@ -101,9 +107,6 @@ storedSolutions <- ht()
 
 # Solve the logit for a given combination of lambda's, that will be stored in row idx of the solution table
 solveLogit <- function(lambdas) {
-  
-  cat("C")
-
   # Prepare empty dataframe
   colNames <- c(
     "group",
@@ -131,7 +134,7 @@ solveLogit <- function(lambdas) {
     {
       # Solve logit (inputDataForGroup and nbCores are global variables, as R doesn't pass parameters as references...)
       model <- solveBoxCoxLogit(inputDataForGroup, lambdas, nbCores)
-      # print(summary(model))
+      #print(summary(model))
 
       # Retrieve and store results
       solution[1, "group"] <- group
@@ -167,7 +170,7 @@ solveLogit <- function(lambdas) {
 
       # Is this a valid solution ?
       if (allSignsAreExpected(model)) {
-        if (allCoefsAreSignificant(model, nbStars = sigLevel)) {
+        if (allCoefsAreSignificant(model, minSigLevel, withSignificantIntercepts)) {
           error <- ""
         } else {
           error <- "Low signif."
@@ -254,23 +257,16 @@ exploreAround <- function(solution, stepSize, dimLevel = 1) {
 }
 
 
-
-
 #########################################################################################
 # MAIN ENTRY
 #########################################################################################
-
-# Set working dir to location of this script
-this.dir <- dirname(parent.frame(2)$ofile)
-setwd(this.dir)
-options(width = 200)
 
 # Load input data needed to solve the logit for the group of commodities
 inputData <- NULL
 load(modelName)
 inputDataForGroup <- inputData[inputData$grp == group, ]
 
-# Number of steps in the range of values to test
+# Number of steps in the range of values to testwarni wa
 nbSteps <- 1 + 2 * range / granularity # Number of steps in the range of values to test
 
 # Use parallel computing in mnLogit
@@ -283,7 +279,7 @@ if (seed != -1) {
 
 cat(paste("Solving for group", group, "\n"))
 
-for (shotgun in 1:nbShotguns) {
+for (shotgun in 1:nbShotguns[nbVariables]) {
   ###################################################################################
   # 1. Randomly choose a series of lambdas and keep the one that gives the highest LL
   ###################################################################################
@@ -299,7 +295,7 @@ for (shotgun in 1:nbShotguns) {
 
     # If solution for this combination is valid
     if (isValid(solution)) {
-      # Keep this solution if better
+      # Keep this solution if better∑
       if (is.null(bestSolution)) {
         bestSolution <- solution
       } else if (solution$LL > bestSolution$LL) {
@@ -308,7 +304,7 @@ for (shotgun in 1:nbShotguns) {
 
       # Break loop if number of valid drawns is reached
       nbCombinationsDrawn <- nbCombinationsDrawn + 1
-      if (nbCombinationsDrawn == nbRandomCombinations) {
+      if (nbCombinationsDrawn == nbRandomCombinations[nbVariables]) {
         break
       }
     }

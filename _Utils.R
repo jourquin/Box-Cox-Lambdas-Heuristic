@@ -20,20 +20,27 @@ allSignsAreExpected <- function(model) {
       }
     }
   }
+
   return(correctSign)
 }
 
 # Get Pr(>|t|) of model for all coefficients
-allCoefsAreSignificant <- function(object, nbStars = 3) {
-  b <- coef(object, order = TRUE)
-  std.err2 <- sqrt(diag(vcov(object)))
+allCoefsAreSignificant <- function(model, nbStars, withSignificantIntercepts) {
+  b <- coef(model, order = TRUE)
+  std.err2 <- sqrt(diag(vcov(model)))
   std.err <- b
   std.err[names(std.err2)] <- std.err2
-
+  
   z <- b / std.err
   p <- 2 * (1 - pnorm(abs(z)))
-
-  for (j in 1:length(p)) {
+  
+  # Test or not the signif.level of the 2 intercepts
+  startIdx <- 3
+  if (withSignificantIntercepts) {
+    startIdx <- 1
+  }
+  startIdx = 1
+  for (j in startIdx:length(p)) {
     if (nbStars == 3 && p[j] > 0.001) {
       return(FALSE)
     }
@@ -54,15 +61,15 @@ allCoefsAreSignificant <- function(object, nbStars = 3) {
 }
 
 # Get Pr(>|t|) of model for a given coefficient
-getStars <- function(object, coefName) {
-  b <- coef(object, order = TRUE)
-  std.err2 <- sqrt(diag(vcov(object)))
+getStars <- function(model, coefName) {
+  b <- coef(model, order = TRUE)
+  std.err2 <- sqrt(diag(vcov(model)))
   std.err <- b
   std.err[names(std.err2)] <- std.err2
-
+  
   z <- b / std.err
   p <- 2 * (1 - pnorm(abs(z)))
-
+  
   pp <- p[coefName]
   if (pp <= 0.001) {
     return("***")
@@ -81,17 +88,24 @@ getStars <- function(object, coefName) {
   }
 }
 
-# Returns TRUE if signs are expected and  all the estimators are enough significant (no error)
+# Returns TRUE if signs are expected and  all the estimators are enough significant
 isValid <- function(solution) {
+  
+  # When looking in stored results (HeuristicVsBruteForce.R)
+  if("keep" %in% colnames(solution)) {
+    return (solution$keep) 
+  }
+  
+  # When used in "real" conditions (Heuristic.R)
   if (solution$error == "") {
     return(TRUE)
   }
   return(FALSE)
 }
 
-# Returns TRUE if all the signs are expected (some estimators may have lower significance)
+# Returns TRUE if all the signs are expected
 hasExpectedSigns <- function(solution) {
-  if (solution$error == "" | solution$error == "Low signif.") {
+  if (solution$error == "") {
     return(TRUE)
   }
   return(FALSE)
@@ -120,4 +134,85 @@ randomDrawLambdas <- function(nbLambdas, range, granularity) {
     lambdas <- c(lambdas, round(lambda, 1))
   }
   return(lambdas)
+}
+
+# Identify, in the brute force results, the solutions with a given signif level.
+# One can decide to test or not the signif level of the intercepts.
+# (This is a piece of ugly code that could be improved)
+#
+# bfSolution : dataframe that contains the brute force solutions
+# nbVariables : 1, 2 or 3
+# minSigLevel : minimum signif. level to retain for the estimators (# " " = 1, ." = 0, "*" = 1, "**" = 2, "***" = 3)
+# withSignificantIntercepts : if TRUE, the signif. levels of the intercepts must also be larger or equal that minSigLevel
+markValidSolutions <- function(bfSolutions, nbVariables, minSigLevel, withSignificantIntercepts) {
+  bfSolutions$sig1b <- -1
+  bfSolutions$sig1b[bfSolutions$sig.const.iww == "."] <- 0
+  bfSolutions$sig1b[bfSolutions$sig.const.iww == "*"] <- 1
+  bfSolutions$sig1b[bfSolutions$sig.const.iww == "**"] <- 2
+  bfSolutions$sig1b[bfSolutions$sig.const.iww == "***"] <- 3
+  
+  bfSolutions$sig2b <- -1
+  bfSolutions$sig2b[bfSolutions$sig.const.rail == "."] <- 0
+  bfSolutions$sig2b[bfSolutions$sig.const.rail == "*"] <- 1
+  bfSolutions$sig2b[bfSolutions$sig.const.rail == "**"] <- 2
+  bfSolutions$sig2b[bfSolutions$sig.const.rail == "***"] <- 3
+  
+  
+  bfSolutions$sig3b <- -1
+  bfSolutions$sig3b[bfSolutions$sig.cost == "."] <- 0
+  bfSolutions$sig3b[bfSolutions$sig.cost == "*"] <- 1
+  bfSolutions$sig3b[bfSolutions$sig.cost == "**"] <- 2
+  bfSolutions$sig3b[bfSolutions$sig.cost == "***"] <- 3
+  
+  if (nbVariables > 1) {
+    bfSolutions$sig4b <- -1
+    bfSolutions$sig4b[bfSolutions$sig.duration == "."] <- 0
+    bfSolutions$sig4b[bfSolutions$sig.duration == "*"] <- 1
+    bfSolutions$sig4b[bfSolutions$sig.duration == "**"] <- 2
+    bfSolutions$sig4b[bfSolutions$sig.duration == "***"] <- 3
+  }
+  
+  if (nbVariables > 2) {
+    bfSolutions$sig5b <- -1
+    bfSolutions$sig5b[bfSolutions$sig.length == "."] <- 0
+    bfSolutions$sig5b[bfSolutions$sig.length == "*"] <- 1
+    bfSolutions$sig5b[bfSolutions$sig.length == "**"] <- 2
+    bfSolutions$sig5b[bfSolutions$sig.length == "***"] <- 3
+  }
+  
+  bfSolutions$keep <- FALSE
+  bfSolutions$best <- FALSE
+  
+  if (nbVariables == 1) {
+    if (withSignificantIntercepts) {
+      bfSolutions$keep[bfSolutions$cost < 0 & bfSolutions$sig1b >= minSignifLevel & bfSolutions$sig2b >= minSignifLevel & bfSolutions$sig3b >= minSignifLevel] <- TRUE
+    } else {
+      bfSolutions$keep[bfSolutions$cost < 0 & bfSolutions$sig3b >= minSignifLevel] <- TRUE
+    }
+  }
+  
+  
+  if (nbVariables == 2) {
+    if (withSignificantIntercepts) {
+      bfSolutions$keep[bfSolutions$cost < 0 & bfSolutions$duration < 0 & bfSolutions$sig1b >= minSignifLevel & bfSolutions$sig2b >= minSignifLevel & bfSolutions$sig3b >= minSignifLevel & bfSolutions$sig4b >= minSignifLevel] <- TRUE
+    } else {
+      bfSolutions$keep[bfSolutions$cost < 0 & bfSolutions$duration < 0 & bfSolutions$sig3b >= minSignifLevel & bfSolutions$sig4b >= minSignifLevel] <- TRUE
+    }
+  }
+  
+  if (nbVariables == 3) {
+    if (withSignificantIntercepts) {
+      bfSolutions$keep[bfSolutions$cost < 0 & bfSolutions$duration < 0 & bfSolutions$length < 0 & bfSolutions$sig1b >= minSignifLevel & bfSolutions$sig2b >= minSignifLevel & bfSolutions$sig3b >= minSignifLevel & bfSolutions$sig4b >= minSignifLevel & bfSolutions$sig5b >= minSignifLevel] <- TRUE
+    } else {
+      bfSolutions$keep[bfSolutions$cost < 0 & bfSolutions$duration < 0 & bfSolutions$length < 0 &bfSolutions$sig3b >= minSignifLevel & bfSolutions$sig4b >= minSignifLevel & bfSolutions$sig5b >= minSignifLevel] <- TRUE
+    }
+  }
+  
+  bfSolutions$sig1b <- NULL
+  bfSolutions$sig2b <- NULL
+  bfSolutions$sig3b <- NULL
+  bfSolutions$sig4b <- NULL
+  bfSolutions$sig5b <- NULL
+  
+  return (bfSolutions)
 }

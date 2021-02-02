@@ -1,8 +1,8 @@
 # Fast identification of good lambda's values for Box-Cox transforms
 
 Transportation costs, transit times and trip lengths are often included in random utility functions
-used in multinomial logit models. As they are correlated, Box-Cox transformations may help to obtain
-better estimators with the expected signs. 
+used in multinomial logit models. As they only partially explain modal choice decisions and they are correlated, 
+Box-Cox transformations may help to obtain better estimators with the expected signs. 
 
 
 This project presents, in a systematic and visual way, the impact that Box-Cox transforms have on the 
@@ -23,7 +23,7 @@ matrices and the networks come from the [ETISPlus](https://cordis.europa.eu/proj
 FP7 European research project. The input data for the logit models (cost, transit time and trip
 length for all the origin-destination pairs and group of commodities) were computed using the
 [Nodus](http://nodus.uclouvain.be) freight transportation network model. The data is stored in 
-the "europeL2-Input.Rda" file, which includes a single R dataframe named "inputData".
+the "europeL2-Input.Rda" file, which contains a single R dataframe named "inputData".
 
 A complete discussion on how to implement a weighted conditional multinomial logit model
 on aggregated data using the same dataset as the one included in this project can be found in
@@ -39,8 +39,8 @@ in a given range and for a given granularity (step size). The range is set to -2
 of 0.1, but these values can be changed. By default, 41 values of lambda are thus tested for each 
 independent variable. That means that 41 logit models are computed for the univariate case, but 
 that 41² and 41³ logits must be computed for the bivariate and trivariate cases respectively. 
-As the dataset contains figures for 10 groups of commodities, the amount of logits to compute f
-or the univariate, bivariate and trivariate cases are equal to 410, 16 810 and 689 210, 
+As the dataset contains figures for 10 groups of commodities, the amount of logits to compute 
+for the univariate, bivariate and trivariate cases are equal to 410, 16 810 and 689 210, 
 which can take a very long computing time. Therefore, the results for the three cases are provided 
 in the "europeL2-01-BruteForceX.Rda", where "X" is equal to "1", "2" or "3". The "01" in the name 
 of the file indicates that the problem was solved with a step of 0.1.
@@ -49,10 +49,7 @@ Each of these files contain a single dataframe named "bfSolutions". It contains 
 or combinations of lambda's and group of commodities. Each row contains the Log-Likelihood of the model, 
 the values of the estimated parameters and their level of significance. An "error" code is also given:
 a blank value means that the model gives the expected (negative) sign for the estimators of all the 
-explanatory variables and that all the estimators are highly significant ('***' by default). These 
-solutions will be further considered as "valid" solutions, among which the best must be retained. 
-The latest can be identified reading the "best" column, which contains one single "TRUE" for each group
-of commodities.
+explanatory variable.
 
 ## Heuristic solutions
 In order to reduce the needed logits to compute, a meta-heuristic is proposed, 
@@ -62,7 +59,7 @@ commodities and for 1, 2 or 3 explanatory variables.
 
 The "HeuristicVsBruteForce.R" script compares the results of the heuristic to the "exact" best solutions
 identified by the brute force approach. A complete discussion about this can be found in the
-"validation" section of "Heuristic.pdf". This script also stores the solutions tested by the heuristic
+"performance" section of "Heuristic.pdf". This script also stores the solutions tested by the heuristic
 in the "europeL2-01-HeuristicX.Rda" files, which contain a single dataframe named "heuristicPath".
 This output can be used to plot the "path" used by the heuristic towards a solution.  
 
@@ -81,7 +78,7 @@ Note that some black dots can be "in the middle of nowhere". These are solutions
 the first phase of the heuristic (random draws of combinations of lambdas) and that don't 
 correspond to "valid" solutions.
 
-This is an example plot (bivariate case, NST-R 5):
+This is an example plot (bivariate case, NST-R 2):
 
 ![Example plot](SamplePlot.png)
 
@@ -96,8 +93,6 @@ solves it using the [mnlogit](https://cran.r-project.org/package=mnlogit) R pack
 returns the solved model.
 - \_Utils.R : several convenience functions: testing signs of the estimators, retrieving their 
 significance level, draw random combinations of lambda's...
-- \_PlotSettings.R : contains group specific settings used to "optimize" the visual perspectives
-of the plots. Used to make the comparison of the plots easier.
 
 ## Hash table
 The heuristic stores the already solved logit models in a hash table, which key is based
@@ -119,6 +114,12 @@ The following R packages (available on CRAN) are needed to run the scripts:
 [mnlogit](https://cran.r-project.org/package=mnlogit), 
 [rgl](https://cran.r-project.org/package=rgl).
 
+## OpenMP on macOS with Xcode tools
+Starting with version 4.0, R is compiled using standard Apple tools (Xcode) and the CRAN 
+distribution doesn't support OpenMP anymore, which is used by "mnlogit" for a parallelized 
+implementation of the Hessian calculation. OpenMP can, however, be enabled using
+the procedure explained [here](https://mac.r-project.org/openmp/). Once this done,
+the the "mnlogit" packages can be compiled from source with OpenMP support.
 
 
 

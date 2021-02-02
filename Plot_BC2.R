@@ -14,8 +14,6 @@
 # solution of the heuristic is plot in blue if it is different from the (exact) best solution identified by the brute force
 # approach.
 #
-# Predefined plot settings are provided for each group. These are specific for the provided dataset in this project.
-#
 # The resulting plot is interactive: the mouse can be used to zoom and modify the perpective.
 #
 
@@ -25,8 +23,18 @@ library(car)
 # Clear memory if wanted
 rm(list = ls(all.names = TRUE))
 
+# Change working directory to the location of this script
+this.dir <- dirname(parent.frame(2)$ofile)
+setwd(this.dir)
+
 # Group of commodities to plot
-group <- 5
+group <- 2
+
+# Minimum signif. level for the estimators: " " = 1, ." = 0, "*" = 1, "**" = 2, "***" = 3
+minSignifLevel <- 1
+
+# If TRUE, the signif. level of the intercepts is also tested
+withSignificantIntercepts <- FALSE
 
 # Plot unconstrained max LL (red dot)
 plotUnconstrainedMax <- TRUE
@@ -45,38 +53,42 @@ modelName <- "europeL2-01"
 windowSize <- 800
 titleLine <- -50
 
+# import some convenience functions
+source("_Utils.R")
+
 # Number of variables in the utility function of the logit model
 nbVariables <- 2
 
 # Get the data for the current group from the brute force results
-this.dir <- dirname(parent.frame(2)$ofile)
-setwd(this.dir)
 load(paste(modelName, "-BruteForce2.Rda", sep = ""))
 data <- bfSolutions[bfSolutions$group == group, ]
 
-# Specific settings (radius, zoom and emphase levels for each group)
-source("_PlotSettings.R")
+# Mark the solutions to retain
+data <- markValidSolutions(data, nbVariables, minSigLevel, withSignificantIntercepts)
 
 # Get unconstrained max Log Likelihood
 unconstrainedMaxLL <- max(data$LL, na.rm = TRUE)
 
+# Mark constrained max
+data$best[data$LL == max(data$LL[data$keep])] <- TRUE
+
+
 # Get all the valid solutions, with or without the best unconstrained one
 if (plotUnconstrainedMax) {
-  LambdaCost <- data$lambda.cost[data$error == "" | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
-  LambdaDuration <- data$lambda.duration[data$error == "" | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
-  LogLik <- data$LL[data$error == "" | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
-  best <- data$best[data$error == "" | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
+  LambdaCost <- data$lambda.cost[data$keep | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
+  LambdaDuration <- data$lambda.duration[data$keep | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
+  LogLik <- data$LL[data$keep | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
+  best <- data$best[data$keep | (data$LL == unconstrainedMaxLL & !is.na(data$LL))]
 } else {
-  LambdaCost <- data$lambda.cost[data$error == ""]
-  LambdaDuration <- data$lambda.duration[data$error == ""]
-  LogLik <- data$LL[data$error == ""]
-  best <- data$best[data$error == ""]
+  LambdaCost <- data$lambda.cost[data$keep]
+  LambdaDuration <- data$lambda.duration[data$keep]
+  LogLik <- data$LL[data$keep]
+  best <- data$best[data$keep]
 }
 
 # Default color and size of the dots
 colors <- rep("gray95", length(LogLik))
-sizes <- (LogLik - min(LogLik)) / min(LogLik)
-emphased <- rep(FALSE, length(LogLik))
+sizes <- rep(1, length(LogLik))
 
 # Force to use the -2, 2 range in all dimensions using invisible spheres
 LambdaCost <- c(LambdaCost, -2)
@@ -119,22 +131,13 @@ if (plotPathToSolution) {
       LambdaDuration <- c(LambdaDuration, lambdaDuration2[i])
       LogLik <- c(LogLik, LogLik2[i])
       colors <- c(colors, "black")
-      emphased <- c(emphased, FALSE)
     } else {
       colors[idx] <- "black"
     }
   }
 
-  # Recomput sizes of nodes
-  LogLik[is.na(LogLik)] <- min(LogLik, na.rm = TRUE)
-  sizes <- (LogLik - min(LogLik, na.rm = TRUE)) / min(LogLik, na.rm = TRUE)
-
   # Identify solution of heuristic
   colors[bestLLIdx] <- "blue"
-  if (!emphased[bestLLIdx]) {
-    sizes[bestLLIdx] <- emphaseLevel * sizes[bestLLIdx]
-    emphased[bestLLIdx] <- TRUE
-  }
 }
 
 
@@ -142,17 +145,10 @@ if (plotPathToSolution) {
 if (plotUnconstrainedMax == TRUE) {
   unconstrainedMaxIdx <- which(LogLik == unconstrainedMaxLL)
   colors[unconstrainedMaxIdx] <- "red"
-  if (!emphased[unconstrainedMaxIdx]) {
-    sizes[unconstrainedMaxIdx] <- emphaseLevel * sizes[unconstrainedMaxIdx]
-    emphased[unconstrainedMaxIdx] <- TRUE
-  }
 }
 
 # Identify the best solution under constraints using a larger green dot
 colors[constrainedMaxIdx] <- "green"
-if (!emphased[constrainedMaxIdx]) {
-  sizes[constrainedMaxIdx] <- emphaseLevel * sizes[constrainedMaxIdx]
-}
 
 # Display
 open3d()
@@ -167,10 +163,9 @@ l3 <- "Log Likelihood"
 axisCol <- rgb(255, 255, 255, max = 255, alpha = 0, names = "transparentWhite")
 
 # Plot and adapt perspective to settings
-scatter3d(x = LambdaCost, y = LambdaDuration, z = LogLik, fogtype = "exp2", surface = FALSE, sphere.size = sphereSize, radius = sizes, point.col = colors, axis.col = c(axisCol, axisCol, axisCol), xlab = l1, ylab = l2, zlab = l3)
-rgl.viewpoint(theta = 180, phi = 90, fov = 45, zoom = zoomLevel, interactive = TRUE)
-U <- par3d("userMatrix")
-par3d(userMatrix = rotate3d(U, theta, 0, 0, 1))
+scatter3d(x = LambdaCost, y = LambdaDuration, z = LogLik, fogtype = "exp2", surface = FALSE, sphere.size = 2, radius = sizes, point.col = colors, axis.col = c(axisCol, axisCol, axisCol), xlab = l1, ylab = l2, zlab = l3)
+
+rgl.viewpoint(theta = 180, phi = 90, fov = 45, zoom = 0.75, interactive = TRUE)
 
 # Add title to the bottom
 title <- paste("NST-R", group)

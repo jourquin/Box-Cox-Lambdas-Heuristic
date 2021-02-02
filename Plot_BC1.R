@@ -12,8 +12,6 @@
 # While being a little bit tricky, a 3D plot is used in order to obtain similar visual outputs as for the
 # bivariate and trivariate cases.
 #
-# Predefined plot settings are provided for each group. These are specific for the provided dataset in this project.
-#
 
 library(rgl)
 library(car)
@@ -21,14 +19,24 @@ library(car)
 # Clear memory if wanted
 rm(list = ls(all.names = TRUE))
 
+# Change working directory to the location of this script
+this.dir <- dirname(parent.frame(2)$ofile)
+setwd(this.dir)
+
 # Group to plot
 group <- 7
 
+# Minimum signif. level for the estimators: " " = 1, ." = 0, "*" = 1, "**" = 2, "***" = 3
+minSignifLevel <- 3
+
+# If TRUE, the signif. level of the intercepts is also tested
+withSignificantIntercepts <- TRUE
+
 # Plot unconstrained max LL (red dot, but not used in the univariate plot as the heuristic always finds the best solution)
-plotUnconstrainedMax <- FALSE
+plotUnconstrainedMax <- TRUE
 
 # Plot all the solutions tested by the heuristic. The best one will be in blue if different from the exact bes solution
-plotPathToSolution <- TRUE
+plotPathToSolution <- FALSE
 
 # input dataset
 modelName <- "europeL2-01"
@@ -41,26 +49,31 @@ modelName <- "europeL2-01"
 windowSize <- 800
 titleLine <- -47
 
+# import some convenience functions
+source("_Utils.R")
+
 # Number of variables in the utility function of the logit model
 nbVariables <- 1
 
 # Get the data for the current group from the brute force results
-this.dir <- dirname(parent.frame(2)$ofile)
-setwd(this.dir)
 load(paste(modelName, "-BruteForce1.Rda", sep = ""))
+
+
 data <- bfSolutions[bfSolutions$group == group, ]
 
-# Specific settings (radius, zoom and emphase levels for each group)
-source("_PlotSettings.R")
+# Mark the solutions to retain
+data <- markValidSolutions(data, nbVariables, minSigLevel, withSignificantIntercepts)
+
+# Mark constrained max
+data$best[data$LL == max(data$LL[data$keep])] <- TRUE
 
 # Get the lambda and LL of the best valid solution
-LambdaCost <- data$lambda.cost[data$error == ""]
-LogLik <- data$LL[data$error == ""]
+LambdaCost <- data$lambda.cost[data$keep]
+LogLik <- data$LL[data$keep]
 
-# Set default color and sizes of th dots
+# Set default color and sizes of the dots
 colors <- rep("gray95", length(LogLik))
-sizes <- (LogLik - min(LogLik)) / min(LogLik)
-emphased <- rep(FALSE, length(LogLik))
+sizes <- rep(1, length(LogLik))
 
 # Identify path to best LL if wanted
 if (plotPathToSolution) {
@@ -84,31 +97,18 @@ if (plotPathToSolution) {
       LambdaCost <- c(LambdaCost, lambdaCost2[i])
       LogLik <- c(LogLik, LogLik2[i])
       colors <- c(colors, "black")
-      emphased <- c(emphased, FALSE)
     } else {
       colors[idx] <- "black"
     }
   }
 
-  # Recomput sizes of nodes
-  LogLik[is.na(LogLik)] <- min(LogLik, na.rm = TRUE)
-  sizes <- (LogLik - min(LogLik, na.rm = TRUE)) / min(LogLik, na.rm = TRUE)
-
   # Identify solution of heuristic
   colors[bestLLIdx] <- "blue"
-  if (!emphased[bestLLIdx]) {
-    sizes[bestLLIdx] <- emphaseLevel * sizes[bestLLIdx]
-    emphased[bestLLIdx] <- TRUE
-  }
 }
 
 # Identify the best solution
 bestLLIdx <- which(LogLik == max(LogLik))
 colors[bestLLIdx] <- "green"
-if (!emphased[bestLLIdx]) {
-  sizes[bestLLIdx] <- emphaseLevel * sizes[bestLLIdx]
-}
-
 
 # Normalize the LL
 minLL <- min(LogLik)
@@ -140,8 +140,8 @@ par3d(windowRect = c(0, 0, windowSize, windowSize))
 
 # Plot and adapt perspective to settings
 tWhite <- rgb(255, 255, 255, max = 255, alpha = 0, names = "transparentWhite")
-scatter3d(x = LambdaCost, y = LogLik, z = zz, surface = FALSE, fogtype = "none", sphere.size = sphereSize, radius = sizes, point.col = colors, axis.col = c("gray20", tWhite, tWhite), xlab = "", zlab = "", ylab = "")
-rgl.viewpoint(theta = 0, phi = 0, fov = 0, zoom = zoomLevel, interactive = TRUE)
+scatter3d(x = LambdaCost, y = LogLik, z = zz, surface = FALSE, fogtype = "none", sphere.size = 1, radius = sizes, point.col = colors, axis.col = c("gray20", tWhite, tWhite), xlab = "", zlab = "", ylab = "")
+rgl.viewpoint(theta = 0, phi = 0, fov = 0, zoom = 0.80, interactive = TRUE)
 
 axisCol <- "gray20"
 labelCol <- "blue"
