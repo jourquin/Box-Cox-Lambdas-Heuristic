@@ -119,7 +119,9 @@ Starting with version 4.0, R is compiled using standard Apple tools (Xcode) and 
 distribution doesn't support OpenMP anymore, which is used by "mnlogit" for a parallelized 
 implementation of the Hessian calculation. OpenMP can, however, be enabled using
 the procedure explained [here](https://mac.r-project.org/openmp/). Once this done,
-the the "mnlogit" packages can be compiled from source with OpenMP support.
+the the "mnlogit" packages can be compiled from source with OpenMP support. Note that
+the precompiled version of "mnlogit" can can be downloaded from CRAN works, but that it 
+displays a warning message telling that works without OMP (and is thus potentially slower).  
 
 
 
