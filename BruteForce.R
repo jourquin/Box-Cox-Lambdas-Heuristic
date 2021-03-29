@@ -146,8 +146,9 @@ groups <- as.numeric(levels(as.factor(inputData$grp)))
 # Force a subset of groups
 #groups <- c(0)
 
-# Use parallel computing in mnLogit
-nbCores <- parallel:::detectCores()
+# Use parallel computing in mnLogit. using 2 cores seems to be the most efficient
+#nbCores <- parallel:::detectCores()
+nbCores <- 2
 
 # Solve for each group
 for (i in 1:length(groups)) {

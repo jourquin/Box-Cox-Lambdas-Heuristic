@@ -269,8 +269,9 @@ inputDataForGroup <- inputData[inputData$grp == group, ]
 # Number of steps in the range of values to testwarni wa
 nbSteps <- 1 + 2 * range / granularity # Number of steps in the range of values to test
 
-# Use parallel computing in mnLogit
-nbCores <- parallel:::detectCores()
+# Use parallel computing in mnLogit. Using 2 cores seems to be the most efficient
+#nbCores <- parallel:::detectCores()
+nbCores <- 2
 
 # Force seed for replicability
 if (seed != -1) {
