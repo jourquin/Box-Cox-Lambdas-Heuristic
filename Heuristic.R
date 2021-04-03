@@ -14,10 +14,10 @@
 # are available between all OD pairs (NA values in the dataframe). Unit costs are expressed in euros/ton, transit times
 # (durations) in hours and lengths in kilometers.
 #
-# The script implementents a meta heuristic able to quicly identify good (combination of) lambda(s) to use for the Box-Cox
+# The script implementents a meta heuristic able to quickly identify good (combination of) lambda(s) to use for the Box-Cox
 # transforms in a given range and for a given step (granularity).
 #
-# Output: identifed lambda's, log-likelihood, values of the estwarningsimated parameters and their level of significance of the logit model.
+# Output: identifed lambda's, log-likelihood, values of the estimated parameters and their level of significance of the logit model.
 #
 
 # Clear memory if wanted
@@ -73,24 +73,6 @@ maxChecks <- 2000 * nbShotguns
 # Nothing should be changed beyond this line                     #####
 ######################################################################
 
-# Install the provided "ht" package (from https://github.com/nfultz/ht) if not yet done.
-if (suppressWarnings(!require(ht))) {
-  # Test if the CRAN "digest" package is installed
-  if (suppressWarnings(!require(digest))) {
-    stop(
-      "Please install the 'digest' package from CRAN. It is needed for the provided 'ht' package."
-    )
-  }
-  this.dir <- dirname(parent.frame(2)$ofile)
-  setwd(this.dir)
-  install.packages("./ht_1.0.tar.gz",
-    repos = NULL,
-    type = "source",
-    quiet = TRUE
-  )
-}
-library(ht)
-
 
 # import the source code of the solver
 source("_BoxCoxLogitSolver.R", local = TRUE)
@@ -103,7 +85,7 @@ nbLogitComputations <- 0
 nbModelChecks <- 0
 bestSolution <- NULL
 solutionsToExplore <- list()
-storedSolutions <- ht()
+storedSolutions <- new.env(hash=TRUE) 
 
 # Solve the logit for a given combination of lambda's, that will be stored in row idx of the solution table
 solveLogit <- function(lambdas) {
@@ -193,12 +175,12 @@ solveLogit <- function(lambdas) {
 
 # Get the solution for a given lambda combination. Compute the model if not yet done.
 retrieveOrComputeLogit <- function(lambdas) {
-  solution <- storedSolutions[lambdas]
+  solution <- storedSolutions[[getKey(lambdas)]]
   if (is.null(solution)) {
     cat("C")
     nbLogitComputations <<- nbLogitComputations + 1
     solution <- solveLogit(lambdas)
-    storedSolutions[lambdas] <<- solution
+    storedSolutions[[getKey(lambdas)]] <<- solution
   } else {
     cat(".")
     nbModelChecks <<- nbModelChecks + 1

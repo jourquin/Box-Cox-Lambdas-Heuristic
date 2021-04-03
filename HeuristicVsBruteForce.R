@@ -55,24 +55,6 @@ modelName <- "europeL2-01"
 # Nothing should be changed beyond this line                     #####
 ######################################################################
 
-# Install the provided "ht" package (from https://github.com/nfultz/ht) if not yet done.
-if (suppressWarnings(!require(ht))) {
-  # Test if the CRAN "digest" package is installed
-  if (suppressWarnings(!require(digest))) {
-    stop(
-      "Please install the 'digest' package from CRAN. It is needed for the provided 'ht' package."
-    )
-  }
-  this.dir <- dirname(parent.frame(2)$ofile)
-  setwd(this.dir)
-  install.packages("./ht_1.0.tar.gz",
-    repos = NULL,
-    type = "source",
-    quiet = TRUE
-  )
-}
-library(ht)
-
 # import some convenience functions
 source("_Utils.R")
 
@@ -123,12 +105,12 @@ solveLogit <- function(lambdas) {
 
 # Get the solution for a given lambda combination. Compute the model if not yet done.
 retrieveOrComputeLogit <- function(lambdas) {
-  solution <- storedSolutions[lambdas]
+  solution <- storedSolutions[[getKey(lambdas)]]
   if (is.null(solution)) {
     cat("C")
     nbLogitComputations <<- nbLogitComputations + 1
     solution <- solveLogit(lambdas)
-    storedSolutions[lambdas] <<- solution
+    storedSolutions[[getKey(lambdas)]] <<- solution
   } else {
     cat(".")
     nbModelChecks <<- nbModelChecks + 1
@@ -241,7 +223,7 @@ for (g in 1:length(groups)) {
   cat(paste("Solving for group", group, "\n"))
 
   # Track the already tested lambda combinations in a hash map
-  storedSolutions <- ht()
+  storedSolutions <- new.env(hash=TRUE) 
 
   # Counters
   nbLogitComputations <- 0
@@ -362,11 +344,9 @@ for (g in 1:length(groups)) {
   cat("\n")
   
   # Save the solutions stored in the hash map in a dataframe and flag the best solution for this group
-  l <- mget(ls(storedSolutions), storedSolutions)
-  for (i in 1:length(l)) {
-    kv <- l[i]
-    hash <- ls(kv)
-    solution <- kv[[hash]]$value
+  keys <- ls(storedSolutions)
+  for (i in 1:length(keys)) {
+    solution <- storedSolutions[[keys[i]]]
     if (solution$error == "" & solution$LL == bestSolution$LL) {
       solution$best <- TRUE
     }

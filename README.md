@@ -94,35 +94,12 @@ returns the solved model.
 - \_Utils.R : several convenience functions: testing signs of the estimators, retrieving their 
 significance level, draw random combinations of lambda's...
 
-## Hash table
-The heuristic stores the already solved logit models in a hash table, which key is based
-on the lambda's used for their Box-Cox transform. Therefore, the script uses the
-[ht](https://github.com/nfultz/ht) package, a minimal implementation of a hash table using 
-the [digest](https://cran.r-project.org/package=digest) package. As ht is not available on CRAN, 
-a source version is provided with this project (ht_1.0.tar.gz). The package will be automatically 
-installed when the script is run. Note that the [digest](https://cran.r-project.org/package=digest)
-package must be installed from CRAN.
-
-This particular implementation of an hash table for R is interesting if one needs to store
-arbitrarily complex objects (a combination of lambda's in this case) as keys in a hash.
-
 ## Needed R packages
 The following R packages (available on CRAN) are needed to run the scripts: 
 [car](https://cran.r-project.org/package=car),
-[digest](https://cran.r-project.org/package=digest),
 [mlogit](https://cran.r-project.org/package=mlogit), 
 [mnlogit](https://cran.r-project.org/package=mnlogit), 
 [rgl](https://cran.r-project.org/package=rgl).
-
-## OpenMP on macOS with Xcode tools
-Starting with version 4.0, R is compiled using standard Apple tools (Xcode) and the CRAN 
-distribution doesn't support OpenMP anymore, which is used by "mnlogit" for a parallelized 
-implementation of the Hessian calculation. OpenMP can, however, be enabled using
-the procedure explained [here](https://mac.r-project.org/openmp/). Once this done,
-the the "mnlogit" packages can be compiled from source with OpenMP support. Note that
-the precompiled version of "mnlogit" can can be downloaded from CRAN works, but that it 
-displays a warning message telling that works without OMP (and is thus potentially slower).  
-
 
 
 

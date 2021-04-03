@@ -111,6 +111,14 @@ hasExpectedSigns <- function(solution) {
   return(FALSE)
 }
 
+# Make a key from a combination of Lambdas
+getKey <- function(lambdas) {
+  key <- "";
+  for (i in 1:length(lambdas)){
+    key <- paste(key, lambdas[i], sep="")
+  }
+  return(key)
+}
 
 # Returns the lambdas of a given solution
 getLambdas <- function(solution, nbVariables) {
