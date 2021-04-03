@@ -78,7 +78,7 @@ Note that some black dots can be "in the middle of nowhere". These are solutions
 the first phase of the heuristic (random draws of combinations of lambdas) and that don't 
 correspond to "valid" solutions.
 
-This is an example plot (bivariate case, NST-R 2):
+This is an example plot (bivariate case, NST-R 7):
 
 ![Example plot](SamplePlot.png)
 
